@@ -24,17 +24,17 @@ extern int cbHead;
 struct Timepoint {
     void (*cb)(Timer *);
     Timer *timer;
-    std::chrono::system_clock::time_point timepoint;
+    std::chrono::high_resolution_clock::time_point timepoint;
     int nextDelay;
+    bool operator<(const Timepoint& o) const { return timepoint < o.timepoint; }
 };
 
 struct Loop {
     int epfd;
     int numPolls = 0;
     bool cancelledLastTimer;
-    int delay = -1;
     epoll_event readyEvents[1024];
-    std::chrono::system_clock::time_point timepoint;
+    std::chrono::high_resolution_clock::time_point timepoint;
     std::vector<Timepoint> timers;
     std::vector<std::pair<Poll *, void (*)(Poll *)>> closing;
 
@@ -44,7 +44,7 @@ struct Loop {
 
     Loop(bool defaultLoop) {
         epfd = epoll_create1(EPOLL_CLOEXEC);
-        timepoint = std::chrono::system_clock::now();
+        timepoint = std::chrono::high_resolution_clock::now();
     }
 
     static Loop *createLoop(bool defaultLoop = true) {
@@ -72,21 +72,13 @@ struct Timer {
     }
 
     void start(void (*cb)(Timer *), int timeout, int repeat) {
-        loop->timepoint = std::chrono::system_clock::now();
-        std::chrono::system_clock::time_point timepoint = loop->timepoint + std::chrono::milliseconds(timeout);
+        startAt(cb, loop->timepoint + std::chrono::milliseconds(timeout), repeat);
+    }
 
+    void startAt(void (*cb)(Timer *), std::chrono::high_resolution_clock::time_point timepoint, int repeat) {
+        loop->timepoint = std::chrono::high_resolution_clock::now();
         Timepoint t = {cb, this, timepoint, repeat};
-        loop->timers.insert(
-            std::upper_bound(loop->timers.begin(), loop->timers.end(), t, [](const Timepoint &a, const Timepoint &b) {
-                return a.timepoint < b.timepoint;
-            }),
-            t
-        );
-
-        loop->delay = -1;
-        if (loop->timers.size()) {
-            loop->delay = std::max<int>(std::chrono::duration_cast<std::chrono::milliseconds>(loop->timers[0].timepoint - loop->timepoint).count(), 0);
-        }
+        loop->timers.insert(std::upper_bound(loop->timers.begin(), loop->timers.end(), t), t);
     }
 
     void setData(void *data) {
@@ -108,11 +100,6 @@ struct Timer {
             pos++;
         }
         loop->cancelledLastTimer = true;
-
-        loop->delay = -1;
-        if (loop->timers.size()) {
-            loop->delay = std::max<int>(std::chrono::duration_cast<std::chrono::milliseconds>(loop->timers[0].timepoint - loop->timepoint).count(), 0);
-        }
     }
 
     void close() {

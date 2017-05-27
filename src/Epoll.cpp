@@ -8,7 +8,7 @@ void (*callbacks[16])(Poll *, int, int);
 int cbHead = 0;
 
 void Loop::run() {
-    timepoint = std::chrono::system_clock::now();
+    timepoint = std::chrono::high_resolution_clock::now();
     while (numPolls) {
         for (std::pair<Poll *, void (*)(Poll *)> c : closing) {
             numPolls--;
@@ -22,8 +22,8 @@ void Loop::run() {
         }
         closing.clear();
 
-        int numFdReady = epoll_wait(epfd, readyEvents, 1024, delay);
-        timepoint = std::chrono::system_clock::now();
+        int timeout = timers.empty() ? -1 : std::max<int>(std::chrono::duration_cast<std::chrono::milliseconds>(timers[0].timepoint - std::chrono::high_resolution_clock::now()).count(), 0);
+        int numFdReady = epoll_wait(epfd, readyEvents, 1024, timeout);
 
         if (preCb) {
             preCb(preCbData);
@@ -35,7 +35,8 @@ void Loop::run() {
             callbacks[poll->state.cbIndex](poll, status, readyEvents[i].events);
         }
 
-        while (timers.size() && timers[0].timepoint < timepoint) {
+        timepoint = std::chrono::high_resolution_clock::now();
+        while (timers.size() && timers[0].timepoint <= timepoint) {
             Timer *timer = timers[0].timer;
             cancelledLastTimer = false;
             timers[0].cb(timers[0].timer);
@@ -44,11 +45,12 @@ void Loop::run() {
                 continue;
             }
 
+            auto tp = timers[0].timepoint;
             int repeat = timers[0].nextDelay;
             auto cb = timers[0].cb;
             timers.erase(timers.begin());
             if (repeat) {
-                timer->start(cb, repeat, repeat);
+                timer->startAt(cb, tp + std::chrono::milliseconds(repeat), repeat);
             }
         }
 
