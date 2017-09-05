@@ -208,7 +208,9 @@ struct WIN32_EXPORT NodeData {
     SSL_CTX *clientContext;
 
     Async *async = nullptr;
+    #ifdef UWS_THREADSAFE
     pthread_t tid;
+    #endif
 
     std::recursive_mutex *asyncMutex;
     std::vector<Poll *> transferQueue;

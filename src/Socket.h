@@ -107,14 +107,15 @@ protected:
 
     void changePoll(Socket *socket) {
         if (!threadSafeChange(nodeData->loop, this, socket->getPoll())) {
+            #ifdef UWS_THREADSAFE
             if (socket->nodeData->tid != pthread_self()) {
                 socket->nodeData->asyncMutex->lock();
                 socket->nodeData->changePollQueue.push_back(socket);
                 socket->nodeData->asyncMutex->unlock();
                 socket->nodeData->async->send();
-            } else {
+            } else
+            #endif
                 change(socket->nodeData->loop, socket, socket->getPoll());
-            }
         }
     }
 

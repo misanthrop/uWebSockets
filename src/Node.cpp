@@ -40,7 +40,9 @@ Node::Node(int recvLength, int prePadding, int postPadding, bool useDefaultLoop)
     nodeData->recvBuffer = nodeData->recvBufferMemoryBlock + prePadding;
     nodeData->recvLength = recvLength - prePadding - postPadding;
 
+    #ifdef UWS_THREADSAFE
     nodeData->tid = pthread_self();
+    #endif
     loop = Loop::createLoop(useDefaultLoop);
 
     // each node has a context
@@ -60,7 +62,9 @@ Node::Node(int recvLength, int prePadding, int postPadding, bool useDefaultLoop)
 }
 
 void Node::run() {
+    #ifdef UWS_THREADSAFE
     nodeData->tid = pthread_self();
+    #endif
     loop->run();
 }
 
