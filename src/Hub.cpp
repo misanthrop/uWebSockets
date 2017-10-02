@@ -4,6 +4,30 @@
 
 namespace uWS {
 
+Hub::Hub(int extensionOptions, bool useDefaultLoop, unsigned int maxPayload)
+	: uS::Node(LARGE_BUFFER_SIZE, WebSocketProtocol<SERVER, WebSocket<SERVER>>::CONSUME_PRE_PADDING, WebSocketProtocol<SERVER, WebSocket<SERVER>>::CONSUME_POST_PADDING, useDefaultLoop),
+      Group<SERVER>(extensionOptions, maxPayload, this, nodeData), Group<CLIENT>(0, maxPayload, this, nodeData) {
+    inflateInit2(&inflationStream, -15);
+    inflationBuffer = new char[LARGE_BUFFER_SIZE];
+
+#ifdef UWS_THREADSAFE
+    getLoop()->preCbData = nodeData;
+    getLoop()->preCb = [](void *nodeData) {
+        static_cast<uS::NodeData *>(nodeData)->asyncMutex->lock();
+    };
+
+    getLoop()->postCbData = nodeData;
+    getLoop()->postCb = [](void *nodeData) {
+        static_cast<uS::NodeData *>(nodeData)->asyncMutex->unlock();
+    };
+#endif
+}
+
+Hub::~Hub() {
+    inflateEnd(&inflationStream);
+    delete [] inflationBuffer;
+}
+
 char *Hub::inflate(char *data, size_t &length, size_t maxPayload) {
     dynamicInflationBuffer.clear();
 
