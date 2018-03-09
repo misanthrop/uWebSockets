@@ -72,11 +72,11 @@ struct Timer {
     }
 
     void start(void (*cb)(Timer *), int timeout, int repeat) {
+		loop->timepoint = std::chrono::high_resolution_clock::now();
         startAt(cb, loop->timepoint + std::chrono::milliseconds(timeout), repeat);
     }
 
     void startAt(void (*cb)(Timer *), std::chrono::high_resolution_clock::time_point timepoint, int repeat) {
-        loop->timepoint = std::chrono::high_resolution_clock::now();
         Timepoint t = {cb, this, timepoint, repeat};
         loop->timers.insert(std::upper_bound(loop->timers.begin(), loop->timers.end(), t), t);
     }
