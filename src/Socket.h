@@ -442,6 +442,13 @@ public:
 
     Address getAddress();
 
+	void setKeepAlive(int enable, int idle, int count, int interval) {
+		setsockopt(getFd(), SOL_SOCKET, SO_KEEPALIVE, &enable, sizeof(int));
+		setsockopt(getFd(), IPPROTO_TCP, TCP_KEEPIDLE, &idle, sizeof(int));
+		setsockopt(getFd(), IPPROTO_TCP, TCP_KEEPCNT, &count, sizeof(int));
+		setsockopt(getFd(), IPPROTO_TCP, TCP_KEEPINTVL, &interval, sizeof(int));
+	}
+
     void setNoDelay(int enable) {
         setsockopt(getFd(), IPPROTO_TCP, TCP_NODELAY, &enable, sizeof(int));
     }
