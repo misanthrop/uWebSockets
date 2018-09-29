@@ -1,0 +1,7 @@
+cmake_minimum_required(VERSION 3.3)
+file(GLOB src src/*.cpp src/*.hpp)
+add_library(uWebSockets ${src})
+set_target_properties(uWebSockets PROPERTIES CXX_STANDARD 11 CXX_EXTENSIONS OFF)
+find_package(ZLIB REQUIRED)
+find_package(OpenSSL REQUIRED)
+target_link_libraries(uWebSockets ${ZLIB_LIBRARIES} ${OPENSSL_LIBRARIES})
